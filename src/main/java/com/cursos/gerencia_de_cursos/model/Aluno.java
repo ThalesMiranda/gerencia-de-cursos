@@ -1,49 +1,52 @@
 package com.cursos.gerencia_de_cursos.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 
-import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 
-import java.time.LocalDate;
-
+/**
+ * Entidade que representa um Aluno. 
+ * Mapeada para a tabela 'aluno' no banco de dados.
+ */
 @Entity
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Table(name = "alunos")
+@Data 
+@NoArgsConstructor 
+@AllArgsConstructor 
 public class Aluno {
 
+    /** Chave Primária, gerada automaticamente. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
-    @Size(max = 150)
-    @Column(nullable = false, length = 150)
+    /** Nome completo do Aluno. Não pode ser vazio. */
+    @NotBlank(message = "O nome é obrigatório.")
     private String nome;
 
-    @NotBlank
-    @Size(min = 11, max = 11)
-    @Pattern(regexp = "^[0-9]{11}$", message = "O CPF deve conter exatamente 11 dígitos.")
-    // Importante: unique = true garante que o CPF seja único
-    @Column(nullable = false, unique = true, length = 11) 
+    /** * Cadastro de Pessoa Física (CPF).
+     * Requisito: O CPF deve ser único no sistema.
+     * Usamos @Column(unique=true) para garantir a restrição no DB.
+     * Usamos @Size para o tamanho (ex: 11 dígitos, ignorando formatação).
+     */
+    @NotBlank(message = "O CPF é obrigatório.")
+    @Size(min = 11, max = 14, message = "O CPF deve ter entre 11 e 14 caracteres (incluindo formatação).")
+    @Column(unique = true) 
     private String cpf;
 
-    @Email
-    @NotBlank
-    @Size(max = 150)
-    // Importante: unique = true garante que o email seja único
-    @Column(nullable = false, unique = true, length = 150) 
+    /** E-mail do Aluno. Não pode ser vazio e deve ter formato válido. */
+    @NotBlank(message = "O e-mail é obrigatório.")
+    @Email(message = "O e-mail deve ser válido.")
     private String email;
 
-    @Column(name = "data_nascimento")
-    private LocalDate dataNascimento;
-
-    // Relacionamento Muitos-para-Muitos com Turma (Matrícula) será adicionado depois
+    // Obs: Esta classe futuramente terá o relacionamento N:M com 'Turma'.
 }

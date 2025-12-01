@@ -1,8 +1,8 @@
 package com.cursos.gerencia_de_cursos.controller;
 
-
 import com.cursos.gerencia_de_cursos.model.Professor;
 import com.cursos.gerencia_de_cursos.repository.ProfessorRepository;
+
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -11,7 +11,13 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
+/**
+ * Controller REST para gerenciar a entidade Professor (CRUD).
+ * Mapeia as operações HTTP para a persistência via ProfessorRepository.
+ */
 @RestController
 @RequestMapping("/api/professores")
 public class ProfessorController {
@@ -20,65 +26,73 @@ public class ProfessorController {
     private ProfessorRepository professorRepository;
 
     /**
-     * GET /api/professores - Lista todos (CR3 - Read/Index)
+     * POST /api/professores: Cria um novo Professor.
+     * @param novoProfessor Os dados do professor a ser criado.
+     * @return 201 Created com o professor persistido.
      */
-    @GetMapping
-    public List<Professor> listarTodos() {
-        return professorRepository.findAll();
+    @PostMapping
+    public ResponseEntity<Professor> criarProfessor(@Valid @RequestBody Professor novoProfessor) {
+        // O @Valid verifica as restrições de @NotBlank, @Size, etc.
+        Professor professorSalvo = professorRepository.save(novoProfessor);
+        return ResponseEntity.status(HttpStatus.CREATED).body(professorSalvo);
     }
 
     /**
-     * GET /api/professores/{id} - Busca por ID (CR3 - Read/Show)
+     * GET /api/professores: Lista todos os Professores.
+     * @return 200 OK com a lista de professores.
+     */
+    @GetMapping
+    public ResponseEntity<List<Professor>> listarTodos() {
+        List<Professor> professores = StreamSupport.stream(professorRepository.findAll().spliterator(), false)
+                                          .collect(Collectors.toList());
+        return ResponseEntity.ok(professores);
+    }
+
+    /**
+     * GET /api/professores/{id}: Busca um Professor pelo ID.
+     * @param id O ID do professor.
+     * @return 200 OK com o professor, ou 404 Not Found.
      */
     @GetMapping("/{id}")
     public ResponseEntity<Professor> buscarPorId(@PathVariable Long id) {
-        Professor professor = professorRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Professor não encontrado com ID: " + id
-                ));
-        return ResponseEntity.ok(professor);
+        return professorRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Professor não encontrado com ID: " + id));
     }
 
     /**
-     * POST /api/professores - Cria um novo Professor (CR3 - Create/Store)
-     */
-    @PostMapping
-    public ResponseEntity<Professor> criar(@Valid @RequestBody Professor professor) {
-        // O JPA garante a unicidade do email (caso duplicado, lança exceção).
-        Professor novoProfessor = professorRepository.save(professor);
-        return ResponseEntity.status(HttpStatus.CREATED).body(novoProfessor);
-    }
-
-    /**
-     * PUT /api/professores/{id} - Atualiza um Professor (CR3 - Update)
+     * PUT /api/professores/{id}: Atualiza um Professor existente.
+     * @param id O ID do professor a ser atualizado.
+     * @param dadosProfessor Os novos dados do professor.
+     * @return 200 OK com o professor atualizado.
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Professor> atualizar(@PathVariable Long id, @Valid @RequestBody Professor dadosProfessor) {
-        Professor professorExistente = professorRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Professor não encontrado para atualização com ID: " + id
-                ));
-
-        // Atualiza os campos
-        professorExistente.setNome(dadosProfessor.getNome());
-        professorExistente.setEmail(dadosProfessor.getEmail());
-        professorExistente.setAreaEspecializacao(dadosProfessor.getAreaEspecializacao());
-
-        Professor professorAtualizado = professorRepository.save(professorExistente);
-        return ResponseEntity.ok(professorAtualizado);
+    public ResponseEntity<Professor> atualizarProfessor(@PathVariable Long id, @Valid @RequestBody Professor dadosProfessor) {
+        return professorRepository.findById(id).map(professorExistente -> {
+            
+            // Atualiza os campos
+            professorExistente.setNome(dadosProfessor.getNome());
+            professorExistente.setAreaEspecializacao(dadosProfessor.getAreaEspecializacao());
+            professorExistente.setCurriculo(dadosProfessor.getCurriculo());
+            
+            // Salva e retorna
+            Professor professorAtualizado = professorRepository.save(professorExistente);
+            return ResponseEntity.ok(professorAtualizado);
+            
+        }).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Professor não encontrado para atualização com ID: " + id));
     }
 
     /**
-     * DELETE /api/professores/{id} - Exclui um Professor (CR3 - Delete/Destroy)
+     * DELETE /api/professores/{id}: Exclui um Professor pelo ID.
+     * @param id O ID do professor a ser excluído.
+     * @return 204 No Content.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+    @ResponseStatus(HttpStatus.NO_CONTENT) // Retorna 204 No Content
+    public void deletarProfessor(@PathVariable Long id) {
         if (!professorRepository.existsById(id)) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "Professor não encontrado para exclusão com ID: " + id
-            );
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Professor não encontrado para exclusão com ID: " + id);
         }
         professorRepository.deleteById(id);
-        return ResponseEntity.noContent().build();
     }
 }

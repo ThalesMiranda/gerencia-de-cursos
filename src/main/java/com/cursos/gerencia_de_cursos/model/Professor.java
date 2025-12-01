@@ -1,41 +1,46 @@
 package com.cursos.gerencia_de_cursos.model;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 
+/**
+ * Entidade que representa um Professor (Instrutor). 
+ * Mapeada para a tabela 'professor' no banco de dados.
+ */
 @Entity
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Table(name = "professors")
+@Data 
+@NoArgsConstructor 
+@AllArgsConstructor 
 public class Professor {
 
+    /** Chave Primária, gerada automaticamente. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
-    @Size(max = 150)
-    @Column(nullable = false, length = 150)
+    /** Nome completo do Professor. Não pode ser vazio. */
+    @NotBlank(message = "O nome é obrigatório.")
     private String nome;
 
-    @Email
-    @NotBlank
-    @Size(max = 150)
-    // Importante: unique = true garante que o email seja único no banco
-    @Column(nullable = false, unique = true, length = 150) 
-    private String email;
-
-    @NotBlank
-    @Size(max = 100)
-    @Column(name = "area_especializacao", nullable = false, length = 100)
+    /** Área de Especialização do Professor (e.g., 'Desenvolvimento Web', 'UX/UI'). */
+    @NotBlank(message = "A área de especialização é obrigatória.")
     private String areaEspecializacao;
 
-    // Relacionamento Um-para-Muitos com Turma será adicionado depois
+    /** * Currículo resumido do Professor.
+     * Pode ter um limite de tamanho maior.
+     */
+    @NotBlank(message = "O currículo é obrigatório.")
+    @Size(max = 500, message = "O currículo não deve exceder 500 caracteres.")
+    private String curriculo;
+
+    // Obs: Esta classe futuramente terá o relacionamento 1:N com 'Turma'.
 }

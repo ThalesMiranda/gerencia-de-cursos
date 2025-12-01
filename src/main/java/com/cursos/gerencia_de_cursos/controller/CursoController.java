@@ -2,6 +2,7 @@ package com.cursos.gerencia_de_cursos.controller;
 
 import com.cursos.gerencia_de_cursos.model.Curso;
 import com.cursos.gerencia_de_cursos.repository.CursoRepository;
+
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -10,80 +11,98 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
+/**
+ * Controller REST para gerenciar a entidade Curso (CRUD).
+ * Mapeia as operações HTTP para a persistência via CursoRepository.
+ */
 @RestController
 @RequestMapping("/api/cursos")
 public class CursoController {
 
+    /** * Injeção de Dependência do Repositório (Slide 25). 
+     * Permite o acesso aos métodos CRUD do Spring Data JPA.
+     */
     @Autowired
     private CursoRepository cursoRepository;
 
     /**
-     * GET /api/cursos - Lista todos os Cursos (CR2 - Read/Index)
+     * POST /cursos: Cria um novo Curso.
+     * @param novoCurso Os dados do curso a ser criado.
+     * @return 201 Created com o curso persistido.
      */
-    @GetMapping
-    public List<Curso> listarTodos() {
-        return cursoRepository.findAll();
+    @PostMapping
+    public ResponseEntity<Curso> criarCurso(@Valid @RequestBody Curso novoCurso) {
+        // O @Valid garante que as anotações como @NotBlank e @Min sejam verificadas.
+        Curso cursoSalvo = cursoRepository.save(novoCurso);
+        // Retorna o status 201 Created (sucesso)
+        return ResponseEntity.status(HttpStatus.CREATED).body(cursoSalvo);
     }
 
     /**
-     * GET /api/cursos/{id} - Busca um Curso por ID (CR2 - Read/Show)
+     * GET /cursos: Lista todos os Cursos.
+     * @return 200 OK com a lista de cursos.
+     */
+    @GetMapping
+    public ResponseEntity<List<Curso>> listarTodos() {
+        // findAll() retorna um Iterable. Convertemos para List para o retorno JSON.
+        List<Curso> cursos = StreamSupport.stream(cursoRepository.findAll().spliterator(), false)
+                                          .collect(Collectors.toList());
+        return ResponseEntity.ok(cursos); // Retorna o status 200 OK
+    }
+
+    /**
+     * GET /cursos/{id}: Busca um Curso pelo ID.
+     * @param id O ID do curso.
+     * @return 200 OK com o curso, ou 404 Not Found se não existir.
      */
     @GetMapping("/{id}")
     public ResponseEntity<Curso> buscarPorId(@PathVariable Long id) {
-        Curso curso = cursoRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Curso não encontrado com ID: " + id
-                ));
-        // Retorna 200 OK
-        return ResponseEntity.ok(curso);
+        Optional<Curso> curso = cursoRepository.findById(id);
+        
+        // Se o curso existir, retorna 200 OK.
+        // Caso contrário, lança uma exceção que o Spring converte para 404 Not Found.
+        return curso.map(ResponseEntity::ok)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado com ID: " + id));
     }
 
     /**
-     * POST /api/cursos - Cria um novo Curso (CR2 - Create/Store)
-     */
-    @PostMapping
-    // @Valid ativa a validação (usaremos nas entidades para @NotNull, etc.)
-    public ResponseEntity<Curso> criar(@Valid @RequestBody Curso curso) {
-        // O Hibernate salvará automaticamente os dados
-        Curso novoCurso = cursoRepository.save(curso);
-        // Retorna 201 Created
-        return ResponseEntity.status(HttpStatus.CREATED).body(novoCurso);
-    }
-
-    /**
-     * PUT/PATCH /api/cursos/{id} - Atualiza um Curso (CR2 - Update)
+     * PUT /cursos/{id}: Atualiza um Curso existente.
+     * @param id O ID do curso a ser atualizado.
+     * @param dadosCurso Os novos dados do curso.
+     * @return 200 OK com o curso atualizado.
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Curso> atualizar(@PathVariable Long id, @Valid @RequestBody Curso dadosCurso) {
-        // 1. Busca o curso existente
-        Curso cursoExistente = cursoRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Curso não encontrado para atualização com ID: " + id
-                ));
-
-        // 2. Atualiza os campos
-        cursoExistente.setNome(dadosCurso.getNome());
-        cursoExistente.setDescricao(dadosCurso.getDescricao());
-        cursoExistente.setCargaHoraria(dadosCurso.getCargaHoraria());
-
-        // 3. Salva e retorna 200 OK
-        Curso cursoAtualizado = cursoRepository.save(cursoExistente);
-        return ResponseEntity.ok(cursoAtualizado);
+    public ResponseEntity<Curso> atualizarCurso(@PathVariable Long id, @Valid @RequestBody Curso dadosCurso) {
+        return cursoRepository.findById(id).map(cursoExistente -> {
+            
+            // Atualiza os campos
+            cursoExistente.setNome(dadosCurso.getNome());
+            cursoExistente.setDescricao(dadosCurso.getDescricao());
+            cursoExistente.setCargaHoraria(dadosCurso.getCargaHoraria());
+            
+            // Salva e retorna o curso atualizado
+            Curso cursoAtualizado = cursoRepository.save(cursoExistente);
+            return ResponseEntity.ok(cursoAtualizado);
+            
+        }).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado para atualização com ID: " + id));
     }
 
     /**
-     * DELETE /api/cursos/{id} - Exclui um Curso (CR2 - Delete/Destroy)
+     * DELETE /cursos/{id}: Exclui um Curso pelo ID.
+     * @param id O ID do curso a ser excluído.
+     * @return 204 No Content.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+    @ResponseStatus(HttpStatus.NO_CONTENT) // Retorna 204 No Content
+    public void deletarCurso(@PathVariable Long id) {
+        // Verifica se o curso existe antes de deletar, para retornar 404 se não existir
         if (!cursoRepository.existsById(id)) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "Curso não encontrado para exclusão com ID: " + id
-            );
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado para exclusão com ID: " + id);
         }
         cursoRepository.deleteById(id);
-        // Retorna 204 No Content (padrão REST para exclusão bem-sucedida)
-        return ResponseEntity.noContent().build();
     }
 }
