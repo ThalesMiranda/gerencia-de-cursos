@@ -19,12 +19,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-// Importação necessária para a anotação
 import org.springframework.transaction.annotation.Transactional; 
 
-/**
- * Controller REST para gerenciar a entidade Turma (CRUD e Matrículas).
- */
 @RestController
 @RequestMapping("/api/turmas")
 public class TurmaController {
@@ -38,11 +34,7 @@ public class TurmaController {
     @Autowired
     private AlunoRepository alunoRepository; 
 
-    // --- CRUD BÁSICO (POST/PUT/GET) ---
 
-    /**
-     * POST /api/turmas: Cria uma nova Turma.
-     */
     @PostMapping
     public ResponseEntity<Turma> criarTurma(@Valid @RequestBody Turma novaTurma) {
         
@@ -63,47 +55,32 @@ public class TurmaController {
         Turma turmaCompleta = turmaRepository.findById(turmaSalva.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Falha ao recarregar a turma salva."));
         
-        // Embora não tenha alunos aqui, mantemos o padrão de recarga para consistência EAGER
         
         return ResponseEntity.status(HttpStatus.CREATED).body(turmaCompleta);
     }
 
-    /**
-     * GET /api/turmas: Lista todas as Turmas. 
-     * ADICIONAMOS @Transactional e FORÇAMOS A CARGA do Set<Aluno> de CADA TURMA.
-     */
     @GetMapping
     @Transactional
     public ResponseEntity<List<Turma>> listarTodos() {
         List<Turma> turmas = StreamSupport.stream(turmaRepository.findAll().spliterator(), false)
                                           .collect(Collectors.toList());
         
-        // FORÇA O CARREGAMENTO LAZY: Itera sobre todas as turmas para acessar o Set<Aluno>
-        // isso garante que o LazyInitializationException não ocorra na serialização.
         turmas.forEach(t -> t.getAlunos().size()); 
 
         return ResponseEntity.ok(turmas);
     }
 
-    /**
-     * GET /api/turmas/{id}: Busca uma Turma pelo ID.
-     * ADICIONAMOS @Transactional e FORÇAMOS A CARGA do Set<Aluno>.
-     */
     @GetMapping("/{id}")
     @Transactional 
     public ResponseEntity<Turma> buscarPorId(@PathVariable Long id) {
         Turma turma = turmaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada com ID: " + id));
 
-        // FORÇA O CARREGAMENTO LAZY: Acessa o Set<Aluno>
         turma.getAlunos().size();
         
         return ResponseEntity.ok(turma);
     }
 
-    /**
-     * PUT /api/turmas/{id}: Atualiza uma Turma existente.
-     */
     @PutMapping("/{id}")
     public ResponseEntity<Turma> atualizarTurma(@PathVariable Long id, @Valid @RequestBody Turma dadosTurma) {
         return turmaRepository.findById(id).map(turmaExistente -> {
@@ -131,9 +108,6 @@ public class TurmaController {
         }).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada para atualização com ID: " + id));
     }
 
-    /**
-     * DELETE /api/turmas/{id}: Exclui uma Turma.
-     */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT) 
     public void deletarTurma(@PathVariable Long id) {
@@ -143,11 +117,7 @@ public class TurmaController {
         turmaRepository.deleteById(id);
     }
     
-    // --- ROTAS PARA RELACIONAMENTO N:M (Matrícula de Alunos) ---
 
-    /**
-     * POST /api/turmas/{turmaId}/matricular/{alunoId}: Adiciona um aluno à turma.
-     */
     @PostMapping("/{turmaId}/matricular/{alunoId}")
     @Transactional
     public ResponseEntity<Turma> matricularAluno(@PathVariable Long turmaId, @PathVariable Long alunoId) {
@@ -165,19 +135,14 @@ public class TurmaController {
         turma.getAlunos().add(aluno);
         Turma turmaAtualizada = turmaRepository.save(turma); 
         
-        // RECUPERAÇÃO EXPLÍCITA E FORÇADA DO LAZY LOAD
         Turma turmaCompleta = turmaRepository.findById(turmaAtualizada.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Falha ao recarregar a turma salva após matrícula."));
         
-        // FORÇA O CARREGAMENTO LAZY: Acessa o Set<Aluno> dentro da transação
         turmaCompleta.getAlunos().size(); 
 
         return ResponseEntity.ok(turmaCompleta);
     }
 
-    /**
-     * DELETE /api/turmas/{turmaId}/desmatricular/{alunoId}: Remove um aluno da turma.
-     */
     @DeleteMapping("/{turmaId}/desmatricular/{alunoId}")
     @Transactional
     public ResponseEntity<Turma> desmatricularAluno(@PathVariable Long turmaId, @PathVariable Long alunoId) {
@@ -195,11 +160,9 @@ public class TurmaController {
         turma.getAlunos().remove(aluno);
         Turma turmaAtualizada = turmaRepository.save(turma); 
         
-        // RECUPERAÇÃO EXPLÍCITA E FORÇADA DO LAZY LOAD
         Turma turmaCompleta = turmaRepository.findById(turmaAtualizada.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Falha ao recarregar a turma atualizada após desmatrícula."));
 
-        // FORÇA O CARREGAMENTO LAZY: Acessa o Set<Aluno> dentro da transação
         turmaCompleta.getAlunos().size();
 
         return ResponseEntity.ok(turmaCompleta);
