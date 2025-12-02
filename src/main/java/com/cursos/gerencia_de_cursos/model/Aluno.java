@@ -1,5 +1,7 @@
 package com.cursos.gerencia_de_cursos.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -22,6 +24,8 @@ import lombok.NoArgsConstructor;
 @Data 
 @NoArgsConstructor 
 @AllArgsConstructor 
+@JsonIgnoreProperties("turmas")
+
 public class Aluno {
 
     /** Chave Primária, gerada automaticamente. */

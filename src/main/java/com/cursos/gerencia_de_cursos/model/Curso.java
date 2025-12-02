@@ -1,5 +1,7 @@
 package com.cursos.gerencia_de_cursos.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -24,6 +26,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor 
 // Construtor com todos os argumentos
 @AllArgsConstructor 
+@JsonIgnoreProperties("turmas")
+
 public class Curso {
 
     /** Chave Primária, gerada automaticamente pelo banco (Slide 15). */
